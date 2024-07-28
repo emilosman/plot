@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -19,7 +20,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	// Print the map
 	for date, content := range filesMap {
-		fmt.Fprintf(w, "Date: %s\nContent:\n%s\n\n", date, content)
+		// fmt.Fprintf(w, "Date: %s\nContent:\n%s\n\n", date, content)
+		fmt.Fprintf(w, "Date: %s\nContent: %f\n\n", date, taskCompletionPercentage(content))
 	}
 }
 
@@ -61,4 +63,24 @@ func readMarkdownFiles(directory string) (map[string]string, error) {
 	}
 
 	return filesMap, nil
+}
+
+func taskCompletionPercentage(markdownContent string) float64 {
+	// Regular expressions to find unchecked and checked checkboxes
+	uncheckedBox := regexp.MustCompile(`-\s*\[\s*\]`)
+	checkedBox := regexp.MustCompile(`-\s*\[x\]`)
+
+	// Find all occurrences of checkboxes
+	uncheckedMatches := uncheckedBox.FindAllStringIndex(markdownContent, -1)
+	checkedMatches := checkedBox.FindAllStringIndex(markdownContent, -1)
+
+	// Calculate counts
+	totalCheckboxes := len(uncheckedMatches) + len(checkedMatches)
+	checkedCheckboxes := len(checkedMatches)
+
+	// Calculate the percentage of checked checkboxes
+	if totalCheckboxes == 0 {
+		return 0.0
+	}
+	return (float64(checkedCheckboxes) / float64(totalCheckboxes)) * 100
 }
