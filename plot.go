@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -10,6 +11,12 @@ import (
 	"sort"
 	"strings"
 )
+
+// MarkdownFile represents the JSON structure for a single markdown file
+type MarkdownFile struct {
+	Date    string `json:"date"`
+	Content string `json:"content"`
+}
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	directory := filepath.Join(os.Getenv("HOME"), "ruby", "exo", "daily")
@@ -28,11 +35,22 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// Sort the keys (dates)
 	sort.Strings(dates)
 
-	// Iterate through the sorted keys and print the content
+	// Create a slice of MarkdownFile to hold the sorted data
+	sortedFiles := make([]MarkdownFile, 0, len(filesMap))
 	for _, date := range dates {
 		content := filesMap[date]
-		// fmt.Fprintf(w, "Date: %s\nContent:\n%s\n\n", date, content)
-		fmt.Fprintf(w, "Date: %s\nContent: %f\n\n", date, taskCompletionPercentage(content))
+		sortedFiles = append(sortedFiles, MarkdownFile{
+			Date:    date,
+			Content: content,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	// Encode the slice to JSON and write it to the response
+	if err := json.NewEncoder(w).Encode(sortedFiles); err != nil {
+		http.Error(w, fmt.Sprintf("Error encoding JSON: %v", err), http.StatusInternalServerError)
+		return
 	}
 }
 
