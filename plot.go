@@ -14,8 +14,10 @@ import (
 
 // MarkdownFile represents the JSON structure for a single markdown file
 type MarkdownFile struct {
-	Date    string `json:"date"`
-	Content string `json:"content"`
+	Date                     string  `json:"date"`
+	Content                  string  `json:"content"`
+	Diary                    string  `json: "diary"`
+	TaskCompletionPercentage float64 `json:"taskCompletionPercentage"`
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -40,8 +42,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	for _, date := range dates {
 		content := filesMap[date]
 		sortedFiles = append(sortedFiles, MarkdownFile{
-			Date:    date,
-			Content: content,
+			Date:                     date,
+			Content:                  content,
+			Diary:                    extractMarkdownSegment(content, "Diary"),
+			TaskCompletionPercentage: taskCompletionPercentage(content),
 		})
 	}
 
@@ -112,4 +116,32 @@ func taskCompletionPercentage(markdownContent string) float64 {
 		return 0.0
 	}
 	return (float64(checkedCheckboxes) / float64(totalCheckboxes)) * 100
+}
+
+// Function to extract the segment of text between a specified heading and the next heading or EOF
+func extractMarkdownSegment(markdownContent string, heading string) string {
+	// Compile the regular expression to match headings
+	headingPattern := regexp.MustCompile(`(?m)^##\s+`)
+	targetHeadingPattern := regexp.MustCompile(fmt.Sprintf(`(?m)^##\s+%s\s*$`, regexp.QuoteMeta(heading)))
+
+	// Find the target heading
+	loc := targetHeadingPattern.FindStringIndex(markdownContent)
+	if loc == nil {
+		return ""
+	}
+
+	startIndex := loc[1]
+
+	// Find the next heading after the target heading
+	subsequentHeadings := headingPattern.FindAllStringIndex(markdownContent[startIndex:], 1)
+
+	endIndex := len(markdownContent)
+	if len(subsequentHeadings) > 0 {
+		endIndex = startIndex + subsequentHeadings[0][0]
+	}
+
+	// Extract the segment between the startIndex and endIndex
+	segment := markdownContent[startIndex:endIndex]
+
+	return strings.TrimSpace(segment)
 }
