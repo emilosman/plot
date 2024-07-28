@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -10,6 +9,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 // MarkdownFile represents the JSON structure for a single markdown file
@@ -52,6 +53,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	// Encode the slice to JSON and write it to the response
+	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	if err := json.NewEncoder(w).Encode(sortedFiles); err != nil {
 		http.Error(w, fmt.Sprintf("Error encoding JSON: %v", err), http.StatusInternalServerError)
 		return
