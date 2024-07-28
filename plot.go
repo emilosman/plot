@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -18,8 +19,18 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Print the map
-	for date, content := range filesMap {
+	// Extract the keys (dates) from the map
+	dates := make([]string, 0, len(filesMap))
+	for date := range filesMap {
+		dates = append(dates, date)
+	}
+
+	// Sort the keys (dates)
+	sort.Strings(dates)
+
+	// Iterate through the sorted keys and print the content
+	for _, date := range dates {
+		content := filesMap[date]
 		// fmt.Fprintf(w, "Date: %s\nContent:\n%s\n\n", date, content)
 		fmt.Fprintf(w, "Date: %s\nContent: %f\n\n", date, taskCompletionPercentage(content))
 	}
