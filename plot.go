@@ -19,6 +19,7 @@ type MarkdownFile struct {
 	Content                  string  `json:"content"`
 	Diary                    string  `json:"diary"`
 	TaskCompletionPercentage float64 `json:"taskCompletionPercentage"`
+	WorkTime                 float64 `json:"workTime"`
 	WeightVolume             int     `json:"weightVolume"`
 }
 
@@ -45,6 +46,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			Content:                  content,
 			Diary:                    extractMarkdownSegment(content, "Diary"),
 			TaskCompletionPercentage: taskCompletionPercentage(content),
+			WorkTime:                 parseWorkTime(content),
 			WeightVolume:             calculateTotalWorkload(extractMarkdownSegment(content, "Exercise")),
 		})
 	}
@@ -75,7 +77,7 @@ func readMarkdownFiles(directory string) (map[string]string, error) {
 	for _, file := range files {
 		if file.Mode().IsRegular() && strings.HasSuffix(file.Name(), ".md") {
 			fileNameParts := strings.Split(file.Name(), "-")
-			if len(fileNameParts) < 2 || fileNameParts[0] == "daiy" {
+			if fileNameParts[1] == "template" || len(fileNameParts) < 2 {
 				continue
 			}
 			datePart := fileNameParts[0]
@@ -169,4 +171,36 @@ func calculateTotalWorkload(markdownContent string) int {
 	}
 
 	return total
+}
+
+func parseWorkTime(markdownContent string) float64 {
+	workTimePattern := regexp.MustCompile(`work:: (\d{2}):(\d{2})`)
+
+	matches := workTimePattern.FindAllStringSubmatch(markdownContent, -1)
+	if matches == nil {
+		return 0
+	}
+
+	totalHours := 0.0
+
+	for _, match := range matches {
+		if len(match) != 3 {
+			continue
+		}
+
+		hours, err := strconv.Atoi(match[1])
+		if err != nil {
+			return 0
+		}
+
+		minutes, err := strconv.Atoi(match[2])
+		if err != nil {
+			return 0
+		}
+
+		timeInHours := float64(hours) + float64(minutes)/60.0
+		totalHours += timeInHours
+	}
+
+	return totalHours
 }
