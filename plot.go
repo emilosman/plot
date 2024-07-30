@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jonreiter/govader"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -18,6 +19,7 @@ type MarkdownFile struct {
 	Date                     string  `json:"date"`
 	Content                  string  `json:"content"`
 	Diary                    string  `json:"diary"`
+	Sentiment                float64 `json:"sentiment"`
 	TaskCompletionPercentage float64 `json:"taskCompletionPercentage"`
 	WorkTime                 float64 `json:"workTime"`
 	WeightVolume             int     `json:"weightVolume"`
@@ -45,6 +47,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			Date:                     date,
 			Content:                  content,
 			Diary:                    extractMarkdownSegment(content, "Diary"),
+			Sentiment:                analyzeSentiment(extractMarkdownSegment(content, "Diary")),
 			TaskCompletionPercentage: taskCompletionPercentage(content),
 			WorkTime:                 parseWorkTime(content),
 			WeightVolume:             calculateTotalWorkload(extractMarkdownSegment(content, "Exercise")),
@@ -203,4 +206,11 @@ func parseWorkTime(markdownContent string) float64 {
 	}
 
 	return totalHours
+}
+
+func analyzeSentiment(markdownContent string) float64 {
+	analyzer := govader.NewSentimentIntensityAnalyzer()
+	sentiment := analyzer.PolarityScores(markdownContent)
+
+	return sentiment.Compound
 }
