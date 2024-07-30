@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
@@ -16,8 +17,9 @@ import (
 type MarkdownFile struct {
 	Date                     string  `json:"date"`
 	Content                  string  `json:"content"`
-	Diary                    string  `json: "diary"`
+	Diary                    string  `json:"diary"`
 	TaskCompletionPercentage float64 `json:"taskCompletionPercentage"`
+	WeightVolume             int     `json:"weightVolume"`
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -43,6 +45,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			Content:                  content,
 			Diary:                    extractMarkdownSegment(content, "Diary"),
 			TaskCompletionPercentage: taskCompletionPercentage(content),
+			WeightVolume:             calculateTotalWorkload(extractMarkdownSegment(content, "Exercise")),
 		})
 	}
 
@@ -72,7 +75,7 @@ func readMarkdownFiles(directory string) (map[string]string, error) {
 	for _, file := range files {
 		if file.Mode().IsRegular() && strings.HasSuffix(file.Name(), ".md") {
 			fileNameParts := strings.Split(file.Name(), "-")
-			if len(fileNameParts) < 2 {
+			if len(fileNameParts) < 2 || fileNameParts[0] == "daiy" {
 				continue
 			}
 			datePart := fileNameParts[0]
@@ -126,4 +129,44 @@ func extractMarkdownSegment(markdownContent string, heading string) string {
 	segment := markdownContent[startIndex:endIndex]
 
 	return strings.TrimSpace(segment)
+}
+
+func calculateTotalWorkload(markdownContent string) int {
+	lines := strings.Split(markdownContent, "\n")
+	total := 0
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		line = strings.TrimPrefix(line, "- ")
+
+		parts := strings.Split(line, ",")
+		if len(parts) < 3 {
+			return 0
+		}
+
+		repsStr := strings.TrimSpace(parts[1])
+		weightStr := strings.TrimSpace(parts[2])
+
+		reps, err := strconv.Atoi(strings.TrimSuffix(repsStr, " reps"))
+		if err != nil {
+			return 0
+		}
+
+		weight := 0
+		if weightStr == "bodyweight" {
+			weight = 10
+		} else {
+			weight, err = strconv.Atoi(strings.TrimSuffix(weightStr, "kg"))
+			if err != nil {
+				return 0
+			}
+		}
+
+		total += reps * weight
+	}
+
+	return total
 }
